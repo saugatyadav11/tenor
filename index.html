@@ -280,27 +280,22 @@
             </div>
             <div class="controls-section">
                 <div class="control-group">
-                    <select id="rive-selector">
-                        <!-- Rive files will be loaded dynamically -->
-                    </select>
-                    <button id="refresh-btn" class="primary-btn">Refresh</button>
-                </div>
-                <div class="control-group">
-                    <select id="size-preset">
-                        <option value="840x520">840 × 520</option>
-                        <option value="1440x600">1440 × 600</option>
-                    </select>
-                    <button id="apply-size-btn" class="primary-btn">Apply Size</button>
-                </div>
+    <select id="rive-selector">
+        <!-- Rive files will be loaded dynamically -->
+    </select>
+    <button id="refresh-btn" class="primary-btn">Refresh</button>
+</div>
+<!-- Removed size preset controls -->
+
             </div>
         </div>
     </header>
     
     <main>
         <div class="canvas-wrapper">
-            <div class="canvas-container" id="resizable-container">
-                <canvas id="canvas" style="width: 840px; height: 520px;"></canvas>
-            </div>
+            <div class="canvas-container" id="resizable-container" style="width:780px; height:620px;">
+    <canvas id="canvas" width="780" height="620" style="width:780px; height:620px;"></canvas>
+</div> <!-- Hardcoded size -->
         </div>
     </main>
     
@@ -424,160 +419,157 @@
                 });
                 
             } catch (error) {
-                showStatus(`Error: ${error.message}`, true);
-                console.error('Error details:', error);
             }
-        }
-        
-        // Fetch and populate the list of Rive files
-        async function fetchRiveFiles() {
-            try {
-                // Fetch the list of files from the repository
-                const response = await fetch('https://api.github.com/repos/saugatyadav11/plato-rive/contents/');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch repository contents');
-                }
-                
-                const files = await response.json();
-                const riveFiles = files.filter(file => 
-                    file.type === 'file' && 
-                    (file.name.endsWith('.riv') || !file.name.includes('.')) // Include both .riv files and files without extensions
-                );
-                
-                const selector = document.getElementById('rive-selector');
-                
-                // Clear all existing options
-                selector.innerHTML = '';
-                
-                if (riveFiles.length === 0) {
-                    showStatus('No Rive files found in the repository', true);
+            
+
+            
+            // Load a Rive file - with proper scaling based on Rive FAQ recommendations
+            function loadRiveFile(filename, isResize = false) {
+                if (!filename) {
+                    showStatus('No file selected', true);
                     return;
                 }
                 
-                // Add options for each Rive file
-                riveFiles.forEach(file => {
-                    const option = document.createElement('option');
-                    option.value = file.name;
-                    option.textContent = file.name;
-                    selector.appendChild(option);
-                });
-                
-                console.log(`Found ${riveFiles.length} Rive files`);
-                
-                // Load the first available file automatically
-                if (selector.options.length > 0) {
-                    const firstFile = selector.options[0].value;
-                    loadRiveFile(firstFile);
-                    showStatus(`Automatically loaded ${firstFile}`);
-                }
-                
-            } catch (error) {
-                showStatus('Failed to load file list: ' + error.message, true);
-                console.error('Error fetching Rive files:', error);
-            }
-        }
-
-
-        
-        // Apply the selected size preset without reloading the animation
-        function applySizePreset() {
-            // Get the selected size
-            const sizePresetSelect = document.getElementById('size-preset');
-            const selectedSize = sizePresetSelect.value;
-            const [width, height] = selectedSize.split('x').map(dim => parseInt(dim, 10));
-            
-            // Get the container and canvas elements
-            const container = document.getElementById('resizable-container');
-            const canvasElement = document.getElementById('canvas');
-            
-            // Update container dimensions immediately
-            container.style.width = `${width}px`;
-            container.style.height = `${height}px`;
-            
-            // Update the canvas size immediately as well
-            canvasElement.width = width;
-            canvasElement.height = height;
-            canvasElement.style.width = `${width}px`;
-            canvasElement.style.height = `${height}px`;
-            
-            // Show status immediately
-            showStatus(`Size set to ${width}×${height}`);
-            
-            // Note: The animation reload is now handled by the change event listener
-            // to ensure it happens instantaneously
-        }
-        
-
-        
-
-        
-
-        
-        // Wait for the page to load
-        window.addEventListener('load', () => {
-            showStatus('Loading Rive runtime...');
-            
-            // Set up the dropdown change event
-            const selector = document.getElementById('rive-selector');
-            selector.addEventListener('change', (e) => {
-                loadRiveFile(e.target.value);
-            });
-            
-            // Set up the refresh button to restart the current animation
-            const refreshBtn = document.getElementById('refresh-btn');
-            refreshBtn.addEventListener('click', () => {
-                // Get the current animation
-                const selector = document.getElementById('rive-selector');
-                const currentFile = selector.value;
-                
-                // If there's a current animation, reload it to restart
-                if (currentFile && currentRiveInstance) {
-                    // Clean up the existing instance
-                    currentRiveInstance.cleanup();
-                    currentRiveInstance = null;
+                try {
+                    if (!isResize) {
+                        showStatus(`Loading ${filename}...`);
+                    }
                     
-                    // Reload the same animation
-                    loadRiveFile(currentFile);
-                    showStatus('Animation restarted');
-                } else {
-                    // If no animation is loaded, refresh the list
-                    fetchRiveFiles();
-                    showStatus('Animation list refreshed');
-                }
-            });
-            
-
-            
-            // Set up the size preset dropdown (no automatic apply)
-            const sizePresetSelect = document.getElementById('size-preset');
-            
-            // Set up the Apply Size button
-            const applySizeBtn = document.getElementById('apply-size-btn');
-            applySizeBtn.addEventListener('click', function() {
-                // Apply the selected size
-                applySizePreset();
-                
-                // Get the current animation file
-                const selector = document.getElementById('rive-selector');
-                const currentFile = selector.value;
-                
-                // If we have a current animation, reload it with new size
-                if (currentFile) {
-                    // First clean up the existing instance
+                    // Clean up previous instance if it exists
                     if (currentRiveInstance) {
                         currentRiveInstance.cleanup();
                         currentRiveInstance = null;
                     }
                     
-                    // Reload the animation with new dimensions
-                    loadRiveFile(currentFile, true);
+                    // Get the canvas element
+                    const canvasElement = document.getElementById('canvas');
+                    
+                    // CRITICAL: From the Rive FAQ, we need to set the canvas attributes
+                    // to match our container size. We also need to explicitly set style dimensions.
+                    const containerWidth = document.getElementById('resizable-container').clientWidth;
+                    const containerHeight = document.getElementById('resizable-container').clientHeight;
+                    
+                    // Debug the file we're loading
+                    console.log(`Loading Rive file: ${filename}`);
+                    
+                    // Set BOTH the attribute dimensions AND the style dimensions
+                    canvasElement.width = containerWidth;
+                    canvasElement.height = containerHeight;
+                    canvasElement.style.width = `${containerWidth}px`;
+                    canvasElement.style.height = `${containerHeight}px`;
+                    
+                    console.log(`Set canvas dimensions: ${containerWidth}x${containerHeight}`);
+                    
+                    // Create a new Rive instance with proper fit settings
+                    currentRiveInstance = new rive.Rive({
+                        src: filename,
+                        canvas: canvasElement,
+                        autoplay: true,
+                        // Don't specify state machine here, we'll handle it in onLoad
+                        // to be more flexible with different file formats
+                        fit: 'contain', // Let Rive maintain aspect ratio
+                        alignment: 'center',
+                        onLoad: () => {
+                            // CRITICAL: From Rive FAQ - fix blurriness by calling this after load
+                            currentRiveInstance.resizeDrawingSurfaceToCanvas();
+                            
+                            // Debug information about the animation
+                            if (currentRiveInstance && currentRiveInstance.activeArtboard) {
+                                const artboard = currentRiveInstance.activeArtboard;
+                                const bounds = artboard.bounds;
+                                console.log(`Animation artboard size: ${bounds.width}x${bounds.height}`);
+                                console.log(`Canvas size: ${canvasElement.width}x${canvasElement.height}`);
+                            }
+                            
+                            // Get available state machines
+                            const stateMachines = currentRiveInstance.stateMachineNames;
+                            console.log('Available state machines:', stateMachines);
+                            
+                            // Try common state machine names or use the first available
+                            const commonNames = ['statemach', 'State Machine 1', 'Main', 'Animation', 'Default'];
+                            let foundMatch = false;
+                            
+                            // Loop through common names and try to find a match
+                            for (const name of commonNames) {
+                                if (stateMachines.includes(name)) {
+                                    currentRiveInstance.play(name);
+                                    console.log(`Playing state machine: ${name}`);
+                                    foundMatch = true;
+                                    break;
+                                }
+                            }
+                            
+                            // If no common name found, just use the first available
+                            if (!foundMatch && stateMachines.length > 0) {
+                                currentRiveInstance.play(stateMachines[0]);
+                                console.log(`Using first available state machine: ${stateMachines[0]}`);
+                            }
+                            
+                            if (!isResize) {
+                                showStatus(`Loaded ${filename} successfully!`);
+                            } else {
+                                showStatus(`Resized and reloaded ${filename} successfully!`);
+                            }
+                        },
+                        onError: (err) => {
+                            showStatus(`Error loading ${filename}: ${err}`, true);
+                            console.error('Error:', err);
+                        }
+                    });
+                    // Load the first available file automatically
+                    if (selector.options.length > 0) {
+                        const firstFile = selector.options[0].value;
+                        loadRiveFile(firstFile);
+                        showStatus(`Automatically loaded ${firstFile}`);
+                    }
+                } catch (err) {
+                    showStatus('Failed to read directory: ' + err.message, true);
                 }
+            }
+
+            // Wait for the page to load
+            window.addEventListener('load', () => {
+                showStatus('Loading Rive runtime...');
+                // Set up the dropdown change event
+                const selector = document.getElementById('rive-selector');
+                selector.addEventListener('change', (e) => {
+                    loadRiveFile(e.target.value);
+                });
+                // Set up the refresh button to restart the current animation
+                const refreshBtn = document.getElementById('refresh-btn');
+                refreshBtn.addEventListener('click', () => {
+                    const selector = document.getElementById('rive-selector');
+                    const currentFile = selector.value;
+                    
+                    // If there's a current animation, reload it to restart
+                    if (currentFile && currentRiveInstance) {
+                        // Clean up the existing instance
+                        currentRiveInstance.cleanup();
+                        currentRiveInstance = null;
+                        
+                        // Reload the same animation
+                        loadRiveFile(currentFile);
+                        showStatus('Animation restarted');
+                    } else {
+                        // If no animation is loaded, refresh the list
+                        fetchRiveFiles();
+                        showStatus('Animation list refreshed');
+                    }
+                });
+                
+                // Add window resize handler to handle window resizing
+                window.addEventListener('resize', function() {
+                    if (currentRiveInstance) {
+                        currentRiveInstance.resizeDrawingSurfaceToCanvas();
+                    }
+                });
+                
+                // Fetch the list of Rive files first
+                fetchRiveFiles();
             });
-            
-            // Add window resize handler to handle window resizing
-            window.addEventListener('resize', function() {
-                if (currentRiveInstance) {
-                    // Just fix the drawing surface on window resize
+        </script>
+    </body>
+    </html>
                     currentRiveInstance.resizeDrawingSurfaceToCanvas();
                 }
             });
