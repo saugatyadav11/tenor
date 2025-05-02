@@ -280,12 +280,9 @@
             </div>
             <div class="controls-section">
                 <div class="control-group">
-    <select id="rive-selector">
-        <!-- Rive files will be loaded dynamically -->
-    </select>
-    <button id="refresh-btn" class="primary-btn">Refresh</button>
+    <button id="refresh-btn" class="primary-btn">Restart Animation</button>
 </div>
-<!-- Removed size preset controls -->
+<!-- Dropdown removed for now -->
 
             </div>
         </div>
@@ -497,63 +494,30 @@
                                     foundMatch = true;
                                     break;
                                 }
-                            }
-                            
-                            // If no common name found, just use the first available
-                            if (!foundMatch && stateMachines.length > 0) {
-                                currentRiveInstance.play(stateMachines[0]);
-                                console.log(`Using first available state machine: ${stateMachines[0]}`);
-                            }
-                            
-                            if (!isResize) {
-                                showStatus(`Loaded ${filename} successfully!`);
-                            } else {
-                                showStatus(`Resized and reloaded ${filename} successfully!`);
-                            }
-                        },
-                        onError: (err) => {
-                            showStatus(`Error loading ${filename}: ${err}`, true);
-                            console.error('Error:', err);
-                        }
-                    });
-                    // Load the first available file automatically
-                    if (selector.options.length > 0) {
-                        const firstFile = selector.options[0].value;
-                        loadRiveFile(firstFile);
-                        showStatus(`Automatically loaded ${firstFile}`);
-                    }
-                } catch (err) {
-                    showStatus('Failed to read directory: ' + err.message, true);
-                }
-            }
-
-            // Wait for the page to load
             window.addEventListener('load', () => {
                 showStatus('Loading Rive runtime...');
-                // Set up the dropdown change event
-                const selector = document.getElementById('rive-selector');
-                selector.addEventListener('change', (e) => {
-                    loadRiveFile(e.target.value);
-                });
-                // Set up the refresh button to restart the current animation
+                const filename = 'Tenor - Animation 1.riv';
+                // Try to fetch the file to check existence
+                fetch(filename, { method: 'HEAD' })
+                    .then(res => {
+                        if (res.ok) {
+                            loadRiveFile(filename);
+                            showStatus(`Loaded ${filename}`);
+                        } else {
+                            showStatus(`${filename} not found in this directory.`, true);
+                        }
+                    })
+                    .catch(() => {
+                        showStatus(`${filename} not found in this directory.`, true);
+                    });
+                // Set up the refresh button to restart the animation
                 const refreshBtn = document.getElementById('refresh-btn');
                 refreshBtn.addEventListener('click', () => {
-                    const selector = document.getElementById('rive-selector');
-                    const currentFile = selector.value;
-                    
-                    // If there's a current animation, reload it to restart
-                    if (currentFile && currentRiveInstance) {
-                        // Clean up the existing instance
+                    if (currentRiveInstance) {
                         currentRiveInstance.cleanup();
                         currentRiveInstance = null;
-                        
-                        // Reload the same animation
-                        loadRiveFile(currentFile);
+                        loadRiveFile(filename);
                         showStatus('Animation restarted');
-                    } else {
-                        // If no animation is loaded, refresh the list
-                        fetchRiveFiles();
-                        showStatus('Animation list refreshed');
                     }
                 });
                 
